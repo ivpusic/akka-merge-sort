@@ -14,10 +14,10 @@ object Main {
 
     // generate random numbers
     val random = new scala.util.Random
-    val list = (1 to 10000 map(_ => random.nextInt(10000))).toList
+    val list = (1 to 20000 map(_ => random.nextInt(20000))).toList
 
     // setup timeout and dispatcher
-    implicit val timeout = Timeout.apply(5 seconds)
+    implicit val timeout = Timeout.apply(10 seconds)
     import actorSystem.dispatcher
 
     // test normal sorting

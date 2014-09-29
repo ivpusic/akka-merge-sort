@@ -7,7 +7,7 @@ import scala.concurrent.duration._
 import akka.util.Timeout
 import com.ivpusic.Messages._
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
 /**
  * Created by ivpusic on 9/23/14.
@@ -15,7 +15,7 @@ import scala.concurrent.Future
 class SorterActor extends Actor {
   override def receive: Receive = {
     case MergeSort(list) =>
-      import context.dispatcher
+      implicit val ec: ExecutionContext = context.system.dispatchers.lookup("akka.actor.sorting-dispatcher")
       implicit val timeout = Timeout(5 seconds)
 
       // setup sorter actors
@@ -25,13 +25,16 @@ class SorterActor extends Actor {
         .withDispatcher("akka.actor.sorting-dispatcher"), name = "sorter_child2")
       val (first, second) = list.splitAt(list.size / 2)
 
-      // fire sorting
-      val f: Future[(List[Int], List[Int])] = for {
-        f <- (sorter1 ? PartialMergeSort(first)).mapTo[List[Int]]
-        s <- (sorter2 ? PartialMergeSort(second)).mapTo[List[Int]]
-      } yield (f, s)
+      val fut1 = ask(sorter1, PartialMergeSort(first)).mapTo[List[Int]]
+      val fut2 = ask(sorter2, PartialMergeSort(second)).mapTo[List[Int]]
 
-      f.map(result => {
+      // fire sorting
+      val resFuture: Future[(List[Int], List[Int])] = for {
+        f1 <- fut1
+        f2 <- fut2
+      } yield (f1, f2)
+
+      resFuture.map(result => {
         val (firstSorted, secondSorted) = result
         SortAlgorithm.merge(firstSorted, secondSorted)
       }).pipeTo(sender())
